@@ -1,15 +1,35 @@
 Vagrant.configure("2") do |config|
-config.vm.provision "shell", inline: "echo Hello"
+  servers=[
+      {
+        :hostname => "Puppet",
+        :box => "centos/7",
+        :ip => "192.168.59.2",
+        :ssh_port => '2200'
+      },
+      {
+        :hostname => "Server2",
+        :box => "bento/ubuntu-18.04",
+        :ip => "192.168.59.3",
+        :ssh_port => '2201'
+      },
+      {
+        :hostname => "Server3",
+        :box => "centos/7",
+        :ip => "192.168.59.4",
+        :ssh_port => '2202'
+      }
+    ]
 
-config.vm.define "puppet" do |puppet_server|
-puppet_server.vm.box = "centos/7"
-config.vm.network "private_network", type: "dhcp", adapter: "1", auto_config: false
-end
-
-config.vm.define "nginx" do |nginx|
-nginx.vm.box = "centos/7"
-config.vm.network "private_network", type: "dhcp", adapter: "1", auto_config: false
-end
-
-config.vm.synced_folder '.', '/vagrant', disabled: true 
+  servers.each do |machine|
+      config.vm.define machine[:hostname] do |node|
+          node.vm.box = machine[:box]
+          node.vm.hostname = machine[:hostname]
+          node.vm.network :private_network, ip: machine[:ip], name: "vboxnet3"
+          node.vm.network "forwarded_port", guest: 22, host: machine[:ssh_port], id: "ssh"
+          node.vm.provider :virtualbox do |vb|
+              vb.customize ["modifyvm", :id, "--memory", 1024]
+              vb.customize ["modifyvm", :id, "--cpus", 2]
+          end
+      end
+  end
 end
